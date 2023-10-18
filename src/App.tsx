@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import moment from 'moment';
 import _ from 'lodash';
 import { AnimatePresence, motion } from 'framer-motion';
 import { GrClose, GrEdit, GrTrash } from 'react-icons/gr';
@@ -18,19 +17,21 @@ import {
   updateResource,
 } from './features/resource';
 
+type InputType = 'url' | 'img' | null;
+
 function App() {
-  const [visibleInput, setVisibleInput] = useState<Boolean>(false);
+  const [visibleInput, setVisibleInput] = useState<InputType>(null);
   const [visibleDetail, setVisibleDetail] = useState<Resource | null>();
   const [isEdit, setIsEdit] = useState<string | null>(null);
 
   const { resources } = useSelector((state: any) => state);
-  console.log(resources);
 
   const dispatch = useDispatch();
 
   const toggleEdit = (key: string | null) =>
     setIsEdit((prev) => (prev === key ? null : key));
-  const toggleInput = () => setVisibleInput((prev) => !prev);
+  const toggleInput = (type: InputType) =>
+    setVisibleInput((prev) => (prev === type ? null : type));
   const showDetail = (resource: Resource) => setVisibleDetail(resource);
   const hideDetail = () => setVisibleDetail(null);
 
@@ -41,7 +42,7 @@ function App() {
     );
   }, [resources]);
 
-  const onAdd = (name: string): Promise<NodeJS.Timeout> => {
+  const onAddURL = (path: string): Promise<NodeJS.Timeout> => {
     // Randomly delay by between 300 and 1000 milliseconds
     const UPLOAD_DELAY = Math.floor(Math.random() * (1000 - 300 + 1) + 300);
     const ADD_SUCCESS = Math.floor(Math.random() * 5 + 1) > 1;
@@ -54,17 +55,15 @@ function App() {
         try {
           // request fail randomly
           if (!ADD_SUCCESS) throw 'URL 추가 실패!';
-          const date = moment().format('YYYYMMDDHHmmss');
-          dispatch(addResource({ path: name, date }));
-          // createResource(name, date);
+
+          dispatch(addResource({ path: [path], type: 'url' }));
           toast.update(process, {
-            render: 'URL이 추가되었습니다.',
+            render: '성공적으로 URL이 추가되었습니다.',
             type: 'success',
             isLoading: false,
             ...toastConfig,
           });
-          // refetch();
-          toggleInput();
+          toggleInput('url');
         } catch (error) {
           toast.update(process, {
             render: 'URL 추가 실패',
@@ -77,25 +76,55 @@ function App() {
       }, UPLOAD_DELAY);
     });
   };
-  const onEdit = (path: string, key: string) => {
-    // updateResource(key, name);
-    dispatch(updateResource({ key, data: { path } }));
+  const onEditURL = (path: string, key: string) => {
+    dispatch(updateResource({ key, data: { path: [path] } }));
     toast.success('성공적으로 수정되었습니다.', {
       position: 'top-center',
       ...toastConfig,
     });
-    // refetch();
     toggleEdit(null);
   };
 
-  const onRemove = (key: string) => {
-    // deleteResource(key);
+  const onRemoveResource = (key: string) => {
     dispatch(deleteResource(key));
     toast.success('성공적으로 삭제되었습니다.', {
       position: 'top-center',
       ...toastConfig,
     });
-    // refetch();
+  };
+  const onAddImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+
+    if (files) {
+      const fileUrl = Array.from(files).map((item) =>
+        URL.createObjectURL(item)
+      );
+      dispatch(addResource({ path: fileUrl, type: 'img' }));
+    }
+    toast.success('성공적으로 이미지가 업로드 되었습니다.', {
+      position: 'top-center',
+      ...toastConfig,
+    });
+    toggleInput('img');
+  };
+
+  const onUpdateImage = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    key: string
+  ) => {
+    const files = e.target.files;
+
+    if (files) {
+      const fileUrl = Array.from(files).map((item) =>
+        URL.createObjectURL(item)
+      );
+      dispatch(updateResource({ key, data: { path: fileUrl } }));
+      toast.success('성공적으로 수정되었습니다.', {
+        position: 'top-center',
+        ...toastConfig,
+      });
+    }
+    toggleEdit(null);
   };
 
   return (
@@ -105,8 +134,8 @@ function App() {
         <aside className="w-[25%] h-screen bg-[#F7F7F7] flex flex-col relative ">
           {/* Button group */}
           <div className="grid grid-flow-col px-4 py-2 gap-2 bg-white shadow-[0_2px_5px_0_rgba(0,0,0,0.1)]">
-            <Button onClick={toggleInput}>URL 추가</Button>
-            <Button onClick={toggleInput}>이미지 추가</Button>
+            <Button onClick={() => toggleInput('url')}>URL 추가</Button>
+            <Button onClick={() => toggleInput('img')}>이미지 추가</Button>
           </div>
 
           {/* Input popup */}
@@ -118,7 +147,17 @@ function App() {
                 {...defaultAnimationInAndOut}
               >
                 <div className="h-auto bg-white border rounded-[5px] p-1 shadow-[0_2px_5px_0_rgba(0,0,0,0.1)]">
-                  <InputText onEnter={onAdd} />
+                  {visibleInput === 'url' ? (
+                    <InputText onEnter={onAddURL} />
+                  ) : (
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/png, image/jpeg"
+                      className="text-xs"
+                      onChange={onAddImage}
+                    />
+                  )}
                 </div>
               </motion.div>
             )}
@@ -142,10 +181,20 @@ function App() {
                   <div className="bg-white rounded-[10px] h-24 p-4 flex flex-col justify-between gap-5">
                     <div className="h-10">
                       {isOnEditing ? (
-                        <InputText
-                          onEnter={(value) => onEdit(value, item.key)}
-                          defaultValue={item.updatedPath || item.path}
-                        />
+                        item.type === 'img' ? (
+                          <input
+                            type="file"
+                            multiple
+                            accept="image/png, image/jpeg"
+                            className="text-xs"
+                            onChange={(e) => onUpdateImage(e, item.key)}
+                          />
+                        ) : (
+                          <InputText
+                            onEnter={(value) => onEditURL(value, item.key)}
+                            defaultValue={item.updatedPath || item.path[0]}
+                          />
+                        )
                       ) : (
                         <p className="line-clamp-2 break-words text-sm">
                           {item.updatedPath || item.path}
@@ -163,7 +212,7 @@ function App() {
                       <motion.div
                         className="cursor-pointer"
                         whileHover={{ scale: 1.2 }}
-                        onClick={() => onRemove(item.key)}
+                        onClick={() => onRemoveResource(item.key)}
                       >
                         <GrTrash />
                       </motion.div>
@@ -176,7 +225,7 @@ function App() {
         </aside>
 
         {/* Main Content */}
-        <main className="w-[75%] h-full ">
+        <main className="w-[75%] h-screen ">
           <AnimatePresence>
             {visibleDetail && (
               <motion.div
@@ -186,21 +235,36 @@ function App() {
               >
                 <div className="shadow-[0_2px_5px_0_rgba(0,0,0,0.1)] p-[14px] flex justify-between relative z-[1]">
                   <h1 className="text-sm flex-1 text-ellipsis overflow-x-hidden mr-4 ">
-                    {visibleDetail.path}
+                    {`${visibleDetail.path[0]} ${
+                      visibleDetail.path.length > 1 &&
+                      visibleDetail.type === 'img'
+                        ? `외 ${visibleDetail.path.length - 1}건`
+                        : ''
+                    }`}
                   </h1>
 
                   <div className="w-5 h-5 cursor-pointer" onClick={hideDetail}>
                     <GrClose />
                   </div>
                 </div>
-                <iframe
-                  src={
-                    visibleDetail.updatedPath
-                      ? checkURL(visibleDetail.updatedPath)
-                      : checkURL(visibleDetail.path)
-                  }
-                  className="w-full flex-1"
-                />
+                <div className="w-full flex-1 overflow-y-scroll">
+                  {visibleDetail.type === 'img' ? (
+                    visibleDetail.path.map((path) => (
+                      <div className="p-4">
+                        <img src={path} alt="image" className="w-full h-auto" />
+                      </div>
+                    ))
+                  ) : (
+                    <iframe
+                      src={
+                        visibleDetail.updatedPath
+                          ? checkURL(visibleDetail.updatedPath)
+                          : checkURL(visibleDetail.path[0])
+                      }
+                      className="w-full h-full"
+                    />
+                  )}
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
