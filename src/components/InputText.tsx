@@ -18,11 +18,11 @@ const InputText = ({ onEnter, defaultValue = '', ...rest }: InputTextProps) => {
   const activeEnter = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     try {
       if (e.key === 'Enter') {
-        if (!urlRef.current?.value) throw new Error(`리소스를 입력하세요.`);
+        if (!urlRef.current?.value) throw `리소스를 입력하세요.`;
 
         const protocolRegex = /^https:\/\/|^http:\/\//gm;
         if (!protocolRegex.test(urlRef.current?.value))
-          throw new Error('프로토콜을 명시해야합니다.');
+          throw '프로토콜을 명시해야합니다.';
 
         await onEnter(urlRef.current.value || '');
       }

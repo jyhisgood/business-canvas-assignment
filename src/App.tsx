@@ -233,7 +233,7 @@ function App() {
                 {...defaultAnimationInAndOut}
               >
                 <div className="shadow-[0_2px_5px_0_rgba(0,0,0,0.1)] p-[14px] flex justify-between relative z-[1]">
-                  <h1 className="text-sm flex-1 text-ellipsis overflow-x-hidden mr-4 ">
+                  <h1 className="text-sm flex-1 text-ellipsis overflow-x-hidden mr-4 whitespace-nowrap">
                     {`${visibleDetail.path[0]} ${
                       visibleDetail.path.length > 1 &&
                       visibleDetail.type === 'img'
