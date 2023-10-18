@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import _ from 'lodash';
 import { AnimatePresence, motion } from 'framer-motion';
 import { GrClose, GrEdit, GrTrash } from 'react-icons/gr';
 import { Slide, ToastContainer, toast } from 'react-toastify';
@@ -54,7 +53,7 @@ function App() {
       setTimeout(() => {
         try {
           // request fail randomly
-          if (!ADD_SUCCESS) throw 'URL 추가 실패!';
+          if (!ADD_SUCCESS) throw new Error('URL 추가 실패!');
 
           dispatch(addResource({ path: [path], type: 'url' }));
           toast.update(process, {
@@ -249,13 +248,18 @@ function App() {
                 </div>
                 <div className="w-full flex-1 overflow-y-scroll">
                   {visibleDetail.type === 'img' ? (
-                    visibleDetail.path.map((path) => (
-                      <div className="p-4">
-                        <img src={path} alt="image" className="w-full h-auto" />
+                    visibleDetail.path.map((path, idx) => (
+                      <div className="p-4" key={idx}>
+                        <img
+                          src={path}
+                          alt={`image_${idx}`}
+                          className="w-full h-auto"
+                        />
                       </div>
                     ))
                   ) : (
                     <iframe
+                      title={'Resource'}
                       src={
                         visibleDetail.updatedPath
                           ? checkURL(visibleDetail.updatedPath)
