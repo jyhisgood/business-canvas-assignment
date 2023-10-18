@@ -6,18 +6,27 @@ import { GrClose, GrEdit, GrTrash } from 'react-icons/gr';
 import { Slide, ToastContainer, toast } from 'react-toastify';
 
 import Button from './components/Button';
-import useLocalStorage, { Resource } from './hooks/useLocalStorage';
+// import useLocalStorage, { Resource } from './hooks/useLocalStorage';
 import InputText from './components/InputText';
 import { checkURL } from './utils';
 import { toastConfig, defaultAnimationInAndOut } from './constants';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  Resource,
+  addResource,
+  deleteResource,
+  updateResource,
+} from './features/resource';
 
 function App() {
   const [visibleInput, setVisibleInput] = useState<Boolean>(false);
   const [visibleDetail, setVisibleDetail] = useState<Resource | null>();
   const [isEdit, setIsEdit] = useState<string | null>(null);
 
-  const { createResource, updateResource, deleteResource, resources, refetch } =
-    useLocalStorage();
+  const { resources } = useSelector((state: any) => state);
+  console.log(resources);
+
+  const dispatch = useDispatch();
 
   const toggleEdit = (key: string | null) =>
     setIsEdit((prev) => (prev === key ? null : key));
@@ -28,13 +37,14 @@ function App() {
   // re-render details if some of one is changed
   useEffect(() => {
     setVisibleDetail((prev) =>
-      resources.find((item) => item.key === prev?.key)
+      resources.find((item: any) => item.key === prev?.key)
     );
   }, [resources]);
 
   const onAdd = (name: string): Promise<NodeJS.Timeout> => {
     // Randomly delay by between 300 and 1000 milliseconds
     const UPLOAD_DELAY = Math.floor(Math.random() * (1000 - 300 + 1) + 300);
+    const ADD_SUCCESS = Math.floor(Math.random() * 5 + 1) > 1;
 
     const process = toast.loading('처리 중 입니다...', {
       position: toast.POSITION.TOP_CENTER,
@@ -43,16 +53,17 @@ function App() {
       setTimeout(() => {
         try {
           // request fail randomly
-          if (!(Math.floor(Math.random() * 5 + 1) > 1)) throw 'URL 추가 실패!';
+          if (!ADD_SUCCESS) throw 'URL 추가 실패!';
           const date = moment().format('YYYYMMDDHHmmss');
-          createResource(name, date);
+          dispatch(addResource({ path: name, date }));
+          // createResource(name, date);
           toast.update(process, {
             render: 'URL이 추가되었습니다.',
             type: 'success',
             isLoading: false,
             ...toastConfig,
           });
-          refetch();
+          // refetch();
           toggleInput();
         } catch (error) {
           toast.update(process, {
@@ -66,24 +77,25 @@ function App() {
       }, UPLOAD_DELAY);
     });
   };
-  const onEdit = (name: string, key: string) => {
-    console.log(key, name);
-    updateResource(key, name);
+  const onEdit = (path: string, key: string) => {
+    // updateResource(key, name);
+    dispatch(updateResource({ key, data: { path } }));
     toast.success('성공적으로 수정되었습니다.', {
       position: 'top-center',
       ...toastConfig,
     });
-    refetch();
+    // refetch();
     toggleEdit(null);
   };
 
   const onRemove = (key: string) => {
-    deleteResource(key);
+    // deleteResource(key);
+    dispatch(deleteResource(key));
     toast.success('성공적으로 삭제되었습니다.', {
       position: 'top-center',
       ...toastConfig,
     });
-    refetch();
+    // refetch();
   };
 
   return (
@@ -114,7 +126,7 @@ function App() {
 
           {/* List */}
           <ul className="p-3 overflow-y-scroll flex-1">
-            {resources.map((item: Resource) => {
+            {resources?.map((item: Resource) => {
               const isOnEditing = isEdit === item.key;
               return (
                 <motion.li
@@ -132,11 +144,11 @@ function App() {
                       {isOnEditing ? (
                         <InputText
                           onEnter={(value) => onEdit(value, item.key)}
-                          defaultValue={item.updatedName || item.name}
+                          defaultValue={item.updatedPath || item.path}
                         />
                       ) : (
                         <p className="line-clamp-2 break-words text-sm">
-                          {item.updatedName || item.name}
+                          {item.updatedPath || item.path}
                         </p>
                       )}
                     </div>
@@ -174,7 +186,7 @@ function App() {
               >
                 <div className="shadow-[0_2px_5px_0_rgba(0,0,0,0.1)] p-[14px] flex justify-between relative z-[1]">
                   <h1 className="text-sm flex-1 text-ellipsis overflow-x-hidden mr-4 ">
-                    {visibleDetail.name}
+                    {visibleDetail.path}
                   </h1>
 
                   <div className="w-5 h-5 cursor-pointer" onClick={hideDetail}>
@@ -183,9 +195,9 @@ function App() {
                 </div>
                 <iframe
                   src={
-                    visibleDetail.updatedName
-                      ? checkURL(visibleDetail.updatedName)
-                      : checkURL(visibleDetail.name)
+                    visibleDetail.updatedPath
+                      ? checkURL(visibleDetail.updatedPath)
+                      : checkURL(visibleDetail.path)
                   }
                   className="w-full flex-1"
                 />
