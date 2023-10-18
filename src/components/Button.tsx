@@ -1,11 +1,10 @@
 import React from 'react';
 
-type Props = {
+type ButtonProps = {
   children: React.ReactNode;
-  onClick?: () => void;
-};
+} & React.ButtonHTMLAttributes<HTMLButtonElement>;
 
-const Button = ({ children, ...rest }: Props) => {
+const Button = ({ children, ...rest }: ButtonProps) => {
   return (
     <button
       className="border-2 text-xs bg-white h-8 border-[#E5E5E5] p-1 rounded-[5px]"
